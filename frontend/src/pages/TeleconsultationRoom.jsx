@@ -299,56 +299,7 @@ export const TeleconsultationRoom = ({ appointment, onLeaveRoom }) => {
     }
   };
 
-  // 1. Live Speech Recognition & AI Translation Hook (100% Real-Time Streaming)
-  useEffect(() => {
-    const isTranslationEffective = isLiveTranslationActive && networkQuality !== 'OFFLINE';
-    if (!isTranslationEffective || callEnded || isAudioMuted) {
-      if (speechRecognizerRef.current) {
-        try {
-          speechRecognizerRef.current.stop();
-        } catch (e) {}
-      }
-      setSpeechStatus('idle');
-      return;
-    }
-
-    const langCodeMap = {
-      hi: 'hi-IN',
-      ta: 'ta-IN',
-      te: 'te-IN',
-      kn: 'kn-IN',
-      ml: 'ml-IN',
-      en: 'en-IN',
-    };
-    const langCode = langCodeMap[sourceLang] || 'en-IN';
-
-    const recognizer = liveTranslationService.createLiveSpeechRecognition({
-      lang: langCode,
-      onStateChange: (state) => setSpeechStatus(state),
-      onResult: async (transcript, isFinal) => {
-        if (networkQuality === 'VERY_LOW' && !isFinal) return; // Limit updates on bad networks
-        broadcastCaption(transcript, isFinal);
-      },
-      onError: (err) => {
-        if (err.error !== 'no-speech' && err.error !== 'aborted') {
-          console.warn('[LiveTranslation] Recognizer notice:', err.message || err.error || err);
-        }
-        if (err.error === 'not-allowed' || err.error === 'service-not-allowed') {
-          setSpeechStatus('error');
-        }
-      },
-    });
-
-    speechRecognizerRef.current = recognizer;
-
-    return () => {
-      if (speechRecognizerRef.current) {
-        try {
-          speechRecognizerRef.current.stop();
-        } catch (e) {}
-      }
-    };
-  }, [isLiveTranslationActive, sourceLang, callEnded, isAudioMuted, roomId, user, networkQuality]);
+  // 1. Live Cloud AI Audio Streaming Hook (Bypasses Android Mic Locks)n  useEffect(() => {n    const isTranslationEffective = isLiveTranslationActive && networkQuality !== 'OFFLINE';n    if (!isTranslationEffective || callEnded || isAudioMuted || !localStream) {n      if (speechRecognizerRef.current) {n        try {n          speechRecognizerRef.current.stop();n        } catch (e) {}n        speechRecognizerRef.current = null;n      }n      setSpeechStatus('idle');n      return;n    }nn    try {n      const audioTrack = localStream.getAudioTracks()[0];n      if (!audioTrack) return;n      n      const stream = new MediaStream([audioTrack]);n      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });n      n      recorder.ondataavailable = async (e) => {n        if (e.data.size > 0 && socketRef.current) {n          const buffer = await e.data.arrayBuffer();n          socketRef.current.emit('audio-chunk', {n            roomId,n            audioBuffer: buffer,n            lang: sourceLangn          });n        }n      };nn      recorder.onstart = () => setSpeechStatus('listening');n      recorder.onerror = () => setSpeechStatus('error');n      n      recorder.start(3500); // 3.5 second chunks for Groq APIn      speechRecognizerRef.current = recorder;n    } catch (err) {n      console.warn('MediaRecorder Error:', err);n      setSpeechStatus('error');n    }nn    return () => {n      if (speechRecognizerRef.current) {n        try {n          speechRecognizerRef.current.stop();n        } catch (e) {}n        speechRecognizerRef.current = null;n      }n    };n  }, [isLiveTranslationActive, sourceLang, callEnded, isAudioMuted, roomId, localStream, networkQuality]);n
 
   // Keep video elements synced with stream refs
   useEffect(() => {

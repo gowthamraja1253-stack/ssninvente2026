@@ -1,3 +1,4 @@
+import { transcribeAudioChunk } from "./aiTranscription.js";
 import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import config from '../config/env.js';
@@ -187,6 +188,32 @@ export const initSocketServer = (httpServer, allowedOrigins = []) => {
     });
 
     // Real-Time Video Frame Sync (Ensures 100% video visibility across localhost & WebRTC)
+    // Live Cloud AI Audio Streaming Pipeline
+    socket.on('audio-chunk', async ({ roomId, audioBuffer, lang }) => {
+      if (!roomId || !audioBuffer) return;
+      try {
+        const text = await transcribeAudioChunk(audioBuffer, lang);
+        if (text && text.trim()) {
+          const captionData = {
+            original: text.trim(),
+            sourceLang: lang,
+            targetLang: lang,
+            isFinal: true,
+            timestamp: Date.now(),
+            senderId: socket.id,
+            isIncoming: true
+          };
+          // Broadcast to everyone in room including sender
+          io.to(roomId).emit('live-captions', { captionData });
+        }
+      } catch (err) {
+        console.error('[Socket] Audio transcription failed:', err);
+      }
+    });
+    // Live Cloud AI Audio Streaming Pipeline
+      }
+    });
+
     socket.on('video-frame', ({ roomId, frameData }) => {
       if (!roomId || !frameData) return;
       socket.to(roomId).emit('video-frame', {
