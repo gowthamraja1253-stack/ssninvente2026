@@ -1417,7 +1417,7 @@ export const TeleconsultationRoom = ({ appointment, onLeaveRoom }) => {
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
-                muted
+                
                 onLoadedMetadata={(e) => e.target.play().catch(() => {})}
                 style={{
                   ...styles.remoteVideoElement,
