@@ -210,9 +210,6 @@ export const initSocketServer = (httpServer, allowedOrigins = []) => {
         console.error('[Socket] Audio transcription failed:', err);
       }
     });
-    // Live Cloud AI Audio Streaming Pipeline
-      }
-    });
 
     socket.on('video-frame', ({ roomId, frameData }) => {
       if (!roomId || !frameData) return;
