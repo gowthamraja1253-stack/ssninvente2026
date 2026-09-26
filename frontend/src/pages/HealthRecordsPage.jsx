@@ -17,6 +17,7 @@ import {
   FlaskConical,
   ScrollText,
   UploadCloud,
+import PatientVitalsDashboard from '../components/dashboards/PatientVitalsDashboard';
   Plus,
   Search,
   ArrowLeft,
@@ -459,6 +460,8 @@ export const HealthRecordsPage = ({ onBack, onNavigateConsult }) => {
           </div>
         </div>
 
+        {/* Patient Vitals Demo Chart */}
+        <PatientVitalsDashboard />
         {/* Category Tabs */}
         <div style={styles.tabsScrollWrap}>
           <div style={styles.tabsRow}>
