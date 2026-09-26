@@ -299,7 +299,54 @@ export const TeleconsultationRoom = ({ appointment, onLeaveRoom }) => {
     }
   };
 
-  // 1. Live Cloud AI Audio Streaming Hook (Bypasses Android Mic Locks)n  useEffect(() => {n    const isTranslationEffective = isLiveTranslationActive && networkQuality !== 'OFFLINE';n    if (!isTranslationEffective || callEnded || isAudioMuted || !localStream) {n      if (speechRecognizerRef.current) {n        try {n          speechRecognizerRef.current.stop();n        } catch (e) {}n        speechRecognizerRef.current = null;n      }n      setSpeechStatus('idle');n      return;n    }nn    try {n      const audioTrack = localStream.getAudioTracks()[0];n      if (!audioTrack) return;n      n      const stream = new MediaStream([audioTrack]);n      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });n      n      recorder.ondataavailable = async (e) => {n        if (e.data.size > 0 && socketRef.current) {n          const buffer = await e.data.arrayBuffer();n          socketRef.current.emit('audio-chunk', {n            roomId,n            audioBuffer: buffer,n            lang: sourceLangn          });n        }n      };nn      recorder.onstart = () => setSpeechStatus('listening');n      recorder.onerror = () => setSpeechStatus('error');n      n      recorder.start(3500); // 3.5 second chunks for Groq APIn      speechRecognizerRef.current = recorder;n    } catch (err) {n      console.warn('MediaRecorder Error:', err);n      setSpeechStatus('error');n    }nn    return () => {n      if (speechRecognizerRef.current) {n        try {n          speechRecognizerRef.current.stop();n        } catch (e) {}n        speechRecognizerRef.current = null;n      }n    };n  }, [isLiveTranslationActive, sourceLang, callEnded, isAudioMuted, roomId, localStream, networkQuality]);n
+  // 1. Live Cloud AI Audio Streaming Hook (Bypasses Android Mic Locks)
+  useEffect(() => {
+    const isTranslationEffective = isLiveTranslationActive && networkQuality !== 'OFFLINE';
+    if (!isTranslationEffective || callEnded || isAudioMuted || !localStream) {
+      if (speechRecognizerRef.current) {
+        try { speechRecognizerRef.current.stop(); } catch (e) {}
+        speechRecognizerRef.current = null;
+      }
+      setSpeechStatus('idle');
+      return;
+    }
+
+    try {
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (!audioTrack) return;
+      
+      const stream = new MediaStream([audioTrack]);
+      // Remove mimeType to let Safari pick its native format, Groq handles all formats
+      const recorder = new MediaRecorder(stream);
+      
+      recorder.ondataavailable = async (e) => {
+        if (e.data.size > 0 && socketRef.current) {
+          const buffer = await e.data.arrayBuffer();
+          socketRef.current.emit('audio-chunk', {
+            roomId,
+            audioBuffer: buffer,
+            lang: sourceLang
+          });
+        }
+      };
+
+      recorder.onstart = () => setSpeechStatus('listening');
+      recorder.onerror = () => setSpeechStatus('error');
+      
+      recorder.start(3500);
+      speechRecognizerRef.current = recorder;
+    } catch (err) {
+      console.warn('MediaRecorder Error:', err);
+      setSpeechStatus('error');
+    }
+
+    return () => {
+      if (speechRecognizerRef.current) {
+        try { speechRecognizerRef.current.stop(); } catch (e) {}
+        speechRecognizerRef.current = null;
+      }
+    };
+  }, [isLiveTranslationActive, sourceLang, callEnded, isAudioMuted, roomId, localStream, networkQuality]);
 
   // Keep video elements synced with stream refs
   useEffect(() => {
